@@ -11,4 +11,10 @@ process for merging the codes in two branches
 4. now merge with main -> git merge origin/main (might show errors)
 5. resolve the easy conflicting files that can be taken from main directly ex: generated_plugin_registrant.cc, generated_plugins.cmake, .metadata, pubspec.lock. swift
    execute the above function using this -> git checkout --theirs v2/mobile_app/windows/flutter/generated_plugin_registrant.cc
-6. 
+6. the source control is the block <img width="1920" height="1020" alt="image" src="https://github.com/user-attachments/assets/dd670841-fc5f-49c3-9051-41f2be0447c7" /> if here, u can see the files that are in conflict with the two branches, so once u click it u can resolve by giving both versions to ai and taking the integrated version. Click the + icon once the changes have been made to a file, there is resolve by merge editor too -> left one represents main branch and right represents the child branch.
+Note: the changes will still show the errors until all the files are resolved and commited (that doesnt mean the changes aint saved)
+shutting down of pc will not loose the data of the chages made. (undo the changes made).
+after shut down we can get to the current state by <img width="1920" height="1020" alt="image" src="https://github.com/user-attachments/assets/cbba5e06-81db-4da7-b6b8-2e0fc2d5a8d5" />
+
+
+
