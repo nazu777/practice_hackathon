@@ -15,6 +15,4 @@ process for merging the codes in two branches
 Note: the changes will still show the errors until all the files are resolved and commited (that doesnt mean the changes aint saved)
 shutting down of pc will not loose the data of the chages made. (undo the changes made).
 after shut down we can get to the current state by <img width="1920" height="1020" alt="image" src="https://github.com/user-attachments/assets/cbba5e06-81db-4da7-b6b8-2e0fc2d5a8d5" />
-
-
-
+7. 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 -> token of nazu777. it will expire in 30 days -> https://github.com/settings/tokens -> this will be used during git push.
