@@ -6,7 +6,7 @@ import '../core/constants.dart';
 // LIVE VALUES (Modern Notifier + Stream Adapter Architecture)
 // ================================================================
 
-// 1. Static Risk (Updated by the Form Submission)
+// 1. Static Risk (Main Branch Backend Logic)
 class RiskNotifier extends Notifier<double> {
   @override
   double build() => 0.0; // Starts at 0 until form is submitted
@@ -16,7 +16,7 @@ class RiskNotifier extends Notifier<double> {
 final riskProvider = NotifierProvider<RiskNotifier, double>(RiskNotifier.new);
 
 // ================================================================
-// BACKGROUND SERVICE STREAMS (Internal)
+// BACKGROUND SERVICE STREAMS (Main Branch Internal Logic)
 // ================================================================
 
 // Listens to the 10x/sec live feed for the chart
@@ -37,15 +37,15 @@ final _stabilizedStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
 });
 
 // ================================================================
-// UI-FACING PROVIDERS (Matches your original file exactly!)
+// UI-FACING PROVIDERS (Keeping your Branch names for the UI)
 // ================================================================
 
-// UI watches this for the chart. It gracefully unwraps the stream.
+// UI watches this for the chart (intensityProvider name from your branch)
 final intensityProvider = Provider<double>((ref) {
   return ref.watch(_liveStreamProvider).value ?? 0.0;
 });
 
-// UI watches this for the label (Walking, Running, etc.)
+// UI watches this for the label (activityProvider name from your branch)
 final activityProvider = Provider<String>((ref) {
   final data = ref.watch(_stabilizedStreamProvider).value;
   return data?['activity'] as String? ?? ACTIVITY_SITTING;
@@ -60,7 +60,7 @@ final strainProductProvider = Provider<double>((ref) {
   return risk * averageIntensity;
 });
 
-// Computed: Alert level based on the strain product
+// Computed: Alert level (alertLevelProvider name from your branch)
 final alertLevelProvider = Provider<String>((ref) {
   final product = ref.watch(strainProductProvider);
 

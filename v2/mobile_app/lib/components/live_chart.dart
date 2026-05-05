@@ -26,7 +26,7 @@ class _LiveChartState extends ConsumerState<LiveChart> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 1. LISTEN HERE (At the top of the build method)
+    // 🟢 BACKEND LOGIC: Listen for provider updates (From Main)
     ref.listen<double>(intensityProvider, (previous, next) {
       setState(() {
         _points.add(FlSpot(_xTime, next));
@@ -56,95 +56,71 @@ class _LiveChartState extends ConsumerState<LiveChart> {
           minX: xMin,
           maxX: xMax,
 
-          // Grid lines every 0.2 on Y axis
+          // 🎨 UI: Gradient Grid and Lines (From Branch)
           gridData: FlGridData(
             show: true,
+            drawVerticalLine: false,
             horizontalInterval: 0.2,
             getDrawingHorizontalLine: (value) => FlLine(
-              color:       Colors.grey.shade200,
+              color: Colors.white.withOpacity(0.05),
               strokeWidth: 1,
             ),
-            drawVerticalLine: false,
           ),
 
-          // Axis titles
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles:   true,
-                interval:     0.2,
-                reservedSize: 30,
-                getTitlesWidget: (val, meta) => Text(
-                  val.toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 9, color: Colors.grey),
-                ),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
+          // 🎨 UI: Titles (From Branch - keeping it clean)
+          titlesData: const FlTitlesData(show: false),
 
-          borderData: FlBorderData(
-            show:   true,
-            border: Border.all(color: Colors.grey.shade300),
-          ),
+          borderData: FlBorderData(show: false),
 
-          // Horizontal reference lines for activity thresholds
+          // 🎨 UI: Threshold Lines (Integrated constants from Main with Branch styles)
           extraLinesData: ExtraLinesData(
             horizontalLines: [
-              // Sitting/Walking boundary
               HorizontalLine(
-                y:           INTENSITY_SITTING_MAX,
-                color:       Colors.blue.withOpacity(0.6),
+                y: INTENSITY_SITTING_MAX,
+                color: Colors.blueAccent,
                 strokeWidth: 1.5,
-                dashArray:   [5, 5],
-                label: HorizontalLineLabel(
-                  show:         true,
-                  alignment:    Alignment.topRight,
-                  padding:      const EdgeInsets.only(right: 4, bottom: 2),
-                  labelResolver: (_) => 'Sit',
-                  style: const TextStyle(fontSize: 9, color: Colors.blue),
-                ),
+                dashArray: [6, 4],
               ),
-              // Walking/Running boundary
               HorizontalLine(
-                y:           INTENSITY_WALKING_MAX,
-                color:       Colors.orange.withOpacity(0.6),
+                y: INTENSITY_WALKING_MAX,
+                color: Colors.orangeAccent,
                 strokeWidth: 1.5,
-                dashArray:   [5, 5],
-                label: HorizontalLineLabel(
-                  show:          true,
-                  alignment:     Alignment.topRight,
-                  padding:       const EdgeInsets.only(right: 4, bottom: 2),
-                  labelResolver: (_) => 'Walk',
-                  style: const TextStyle(fontSize: 9, color: Colors.orange),
-                ),
+                dashArray: [6, 4],
               ),
             ],
           ),
 
-          // The main intensity line
+          // 🎨 UI: Main Intensity Line (From Branch - Gradients & Curves)
           lineBarsData: [
             LineChartBarData(
-              spots:     _points,
-              isCurved:  true,
-              color:     Colors.red,
-              barWidth:  2,
-              dotData:   FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show:  true,
-                color: Colors.red.withOpacity(0.08),
+              spots: _points,
+              isCurved: true,
+              curveSmoothness: 0.35,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF00E5FF),
+                  Color(0xFF7C4DFF),
+                ],
               ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF00E5FF).withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              dotData: const FlDotData(show: false),
             ),
           ],
         ),
+        duration: const Duration(milliseconds: 300), // Smooth sliding animation
+        curve: Curves.easeOut,
       ),
     );
   }

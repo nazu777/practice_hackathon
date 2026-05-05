@@ -1,43 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// Logic & Services from Main
 import '../providers/app_state.dart';
 import '../core/constants.dart';
-import '../components/live_chart.dart';
 import '../logic/alert_manager.dart';
 import '../services/local_db.dart';
-import 'assessment_form.dart';
+import '../services/suggestion_engine.dart'; // From HEAD
 
-// ================================================================
-// Dashboard Screen
-// Shows live activity, risk score, strain product, and alert banner.
-// Member 2 owns this. Uses ref.watch() on providers from app_state.dart.
-// ================================================================
+// Components
+import '../components/live_chart.dart';
+import 'assessment_form.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
+  // UI Helper: Maps Main logic constants to Head colors
   Color _alertColor(String level) {
     switch (level) {
-      case ALERT_STABLE:   return const Color(0xFF2E7D32); // Dark green
-      case ALERT_ELEVATED: return const Color(0xFFE65100); // Dark orange
-      case ALERT_CRITICAL: return const Color(0xFFB71C1C); // Dark red
+      case ALERT_STABLE:   return Colors.green;
+      case ALERT_ELEVATED: return Colors.orange;
+      case ALERT_CRITICAL: return Colors.red;
       default:             return Colors.grey;
     }
   }
 
-  String _alertMessage(String level) {
-    switch (level) {
-      case ALERT_STABLE:
-        return 'Your vitals are stable. Keep it up!';
-      case ALERT_ELEVATED:
-        return 'Elevated strain detected.\nConsider slowing to a walk or sitting down.';
-      case ALERT_CRITICAL:
-        return '⚠️ HIGH CARDIOVASCULAR STRAIN\nSIT DOWN IMMEDIATELY AND REST';
-      default:
-        return 'Monitoring...';
-    }
-  }
-
+  // UI Helper: Maps Main logic constants to Head icons
   IconData _activityIcon(String activity) {
     switch (activity) {
       case ACTIVITY_SITTING: return Icons.chair_outlined;
@@ -47,20 +35,15 @@ class DashboardScreen extends ConsumerWidget {
     }
   }
 
-  String _riskLabel(double risk) {
-    if (risk <= 0.3) return 'LOW';
-    if (risk <= 0.6) return 'MEDIUM';
-    return 'HIGH';
-  }
-
   Color _riskColor(double risk) {
-    if (risk <= 0.3) return Colors.green;
-    if (risk <= 0.6) return Colors.orange;
-    return Colors.red;
+    if (risk < 0.3) return Colors.greenAccent;
+    if (risk < 0.7) return Colors.orangeAccent;
+    return Colors.redAccent;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watches from Main Branch Providers
     final alertLevel = ref.watch(alertLevelProvider);
     final activity   = ref.watch(activityProvider);
     final risk       = ref.watch(riskProvider);
@@ -70,23 +53,23 @@ class DashboardScreen extends ConsumerWidget {
     final alertColor = _alertColor(alertLevel);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: const Color(0xFF0B0F1A), // Dark UI from Head
       appBar: AppBar(
-        backgroundColor:  alertColor,
-        foregroundColor:  Colors.white,
-        title:            const Text('PulseEdge'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          "Pulse Edge",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
         actions: [
-          // Re-assess button
           IconButton(
-            icon:    const Icon(Icons.refresh),
-            tooltip: 'Re-do Assessment',
+            icon: const Icon(Icons.refresh, color: Colors.white70),
             onPressed: () async {
               await LocalDB.clearProfile();
               if (context.mounted) {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => const AssessmentFormScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const AssessmentFormScreen()),
                 );
               }
             },
@@ -97,180 +80,186 @@ class DashboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // 🔥 MAIN HERO CARD (Head UI with Main Data)
+            _mainHeroCard(activity, alertLevel, risk, intensity, alertColor),
 
-            // ── Alert Banner ────────────────────────────────────────
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              width:   double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color:        alertColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color:      alertColor.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset:     const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    alertLevel,
-                    style: const TextStyle(
-                      color:       Colors.white,
-                      fontSize:    28,
-                      fontWeight:  FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _alertMessage(alertLevel),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (alertLevel == ALERT_CRITICAL) ...[
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () => AlertManager.dismissAlert(),
-                      icon:  const Icon(Icons.check_circle),
-                      label: const Text('Dismiss Alarm'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.red.shade800,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 16),
+            // 📊 CHART CARD
+            _chartCard(),
 
-            // ── Activity + Risk Row ─────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoCard(
-                    title:    'Activity',
-                    value:    activity,
-                    icon:     _activityIcon(activity),
-                    iconColor: Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoCard(
-                    title:     'Static Risk',
-                    value:     _riskLabel(risk),
-                    subtitle:  risk.toStringAsFixed(2),
-                    icon:      Icons.favorite,
-                    iconColor: _riskColor(risk),
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 12),
-
-            // ── Intensity + Strain Row ──────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoCard(
-                    title:     'Intensity',
-                    value:     intensity.toStringAsFixed(2),
-                    icon:      Icons.speed,
-                    iconColor: Colors.purple,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoCard(
-                    title:     'Strain (R×I)',
-                    value:     strain.toStringAsFixed(2),
-                    icon:      Icons.monitor_heart,
-                    iconColor: alertColor,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Live Chart ──────────────────────────────────────────
-            Container(
-              padding:     const EdgeInsets.all(12),
-              decoration:  BoxDecoration(
-                color:        Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Live Intensity (last 5 min)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(height: 8),
-                  LiveChart(),
-                ],
-              ),
-            ),
-
+            // ⚡ EXTRA STATS (Integrated Strain Calculation from Main)
+            _extraStats(strain),
           ],
         ),
       ),
     );
   }
-}
 
-// ── Reusable info card widget ────────────────────────────────────
-class _InfoCard extends StatelessWidget {
-  final String   title;
-  final String   value;
-  final String?  subtitle;
-  final IconData icon;
-  final Color    iconColor;
-
-  const _InfoCard({
-    required this.title,
-    required this.value,
-    this.subtitle,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _mainHeroCard(String activity, String alert, double risk, double intensity, Color alertColor) {
     return Container(
-      padding:    const EdgeInsets.all(14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color:        Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 32),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(_activityIcon(activity), color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Text(activity, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: alertColor.withOpacity(0.2),
+                  border: Border.all(color: alertColor),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(alert, style: TextStyle(color: alertColor, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+
+          Center(
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Text(title,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                if (subtitle != null)
-                  Text(subtitle!,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                SizedBox(
+                  width: 160,
+                  height: 160,
+                  child: CircularProgressIndicator(
+                    value: risk,
+                    strokeWidth: 14,
+                    backgroundColor: Colors.white10,
+                    valueColor: AlwaysStoppedAnimation(_riskColor(risk)),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("${(risk * 100).toInt()}%",
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const Text("Risk Level", style: TextStyle(color: Colors.white60)),
+                  ],
+                ),
               ],
             ),
           ),
+
+          const SizedBox(height: 30),
+
+          // 🤖 AI SUGGESTION (Logic from Head)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: Colors.cyanAccent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    generateSuggestion(risk, activity),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          if (alert == ALERT_CRITICAL) ...[
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => AlertManager.dismissAlert(),
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Dismiss Critical Alarm'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade900,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ]
         ],
+      ),
+    );
+  }
+
+  Widget _chartCard() {
+    return Container(
+      height: 250,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121826),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Live Intensity", style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Expanded(child: LiveChart()),
+        ],
+      ),
+    );
+  }
+
+  Widget _extraStats(double strain) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _miniCard("Strain Index", strain.toStringAsFixed(2)),
+        _miniCard("Active", "32m"),
+        _miniCard("Calories", "86"),
+      ],
+    );
+  }
+
+  Widget _miniCard(String title, String value) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 5),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF121826),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+            const SizedBox(height: 4),
+            Text(title, style: const TextStyle(fontSize: 12, color: Colors.white60)),
+          ],
+        ),
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../core/constants.dart';
 
 // ================================================================
 // Called once at app startup (from main.dart)
+// Integrated: Permission logic & Notification Channels from Main
 // ================================================================
 Future<void> initBackgroundService() async {
   if (Platform.isAndroid) {
@@ -43,13 +44,13 @@ Future<void> initBackgroundService() async {
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: false,
+      autoStart: false, // Logic from Main
       isForegroundMode: true,
       notificationChannelId: 'pulse_edge_channel',
       initialNotificationTitle: 'PulseEdge',
       initialNotificationContent: 'Monitoring your heart health...',
       foregroundServiceNotificationId: 888,
-      foregroundServiceTypes: [AndroidForegroundType.dataSync],
+      foregroundServiceTypes: [AndroidForegroundType.dataSync], // Required for Android 15
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,
@@ -67,30 +68,27 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 }
 
 // ================================================================
-// BACKGROUND ISOLATE LOGIC (Merged Member 3 + Member 4)
+// BACKGROUND ISOLATE LOGIC
+// Integrated: Throttled UI updates and Windowed Activity Classification
 // ================================================================
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  // 🟢 REQUIRED: Keeps Android 15 from crashing
   if (service is AndroidServiceInstance) {
     service.setAsForegroundService();
   }
 
   final List<double> svmBuffer = [];
-
-
-  // 🟢 ADD THIS: A tracker for our throttle
   DateTime lastUIUpdate = DateTime.now();
   
   // 1. Listen to raw accelerometer events continuously
   accelerometerEvents.listen((AccelerometerEvent event) {
-    // Calculate using the new SensorMath class
+    // Logic: Use SensorMath class for calculations
     final double rawSVM = SensorMath.calculateSVM(event.x, event.y, event.z);
     final double normalized = SensorMath.normalizeSVM(rawSVM);
     
     svmBuffer.add(normalized);
 
-    // 🟢 THROTTLE: Only send to the UI every 200 milliseconds (5x a second)
+    // THROTTLE: Send raw spikes to UI 5 times per second for the live chart
     final now = DateTime.now();
     if (now.difference(lastUIUpdate).inMilliseconds > 200) {
       service.invoke('updateIntensity', {"intensity": normalized});
@@ -98,21 +96,19 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // 2. Every 10 seconds, calculate average for classification
+  // 2. Windowed Processing: Every 10 seconds, classify the activity
   Timer.periodic(const Duration(seconds: SENSOR_WINDOW_SECONDS), (timer) {
     if (svmBuffer.isNotEmpty) {
       final double avgIntensity = SensorMath.computeAverage(svmBuffer);
-      
-      // 🟢 MEMBER 4'S ADDITION: Don't forget to classify the activity!
       final String activity = SensorMath.classifyActivity(avgIntensity);
 
-      // Send the averaged "stabilized" data to the UI/Alert logic
+      // Broadcast the stabilized "Activity State" to the UI and Alert logic
       service.invoke('updateStabilizedIntensity', {
         'average': avgIntensity,
         'activity': activity,
       });
 
-      svmBuffer.clear(); // Reset for the next 10 seconds
+      svmBuffer.clear(); // Reset for the next window
     }
   });
 }

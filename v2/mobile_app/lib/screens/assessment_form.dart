@@ -7,36 +7,34 @@ import 'dashboard_screen.dart';
 
 // ================================================================
 // Assessment Form Screen
-// User fills in 11 medical columns → TFLite prediction → Dashboard
+// Integrated: Premium UI (Branch) + ML Inference Logic (Main)
 // ================================================================
 
 class AssessmentFormScreen extends ConsumerStatefulWidget {
   const AssessmentFormScreen({super.key});
 
   @override
-  ConsumerState<AssessmentFormScreen> createState() =>
-      _AssessmentFormScreenState();
+  ConsumerState<AssessmentFormScreen> createState() => _AssessmentFormScreenState();
 }
 
-class _AssessmentFormScreenState
-    extends ConsumerState<AssessmentFormScreen> {
-  final _formKey  = GlobalKey<FormState>();
+class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
+  final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // Text controllers for numeric inputs
-  final _ageCtrl         = TextEditingController();
-  final _restingBPCtrl   = TextEditingController();
+  // Controllers for numeric inputs (Main Branch Logic)
+  final _ageCtrl = TextEditingController();
+  final _restingBPCtrl = TextEditingController();
   final _cholesterolCtrl = TextEditingController();
-  final _maxHRCtrl       = TextEditingController();
-  final _oldpeakCtrl     = TextEditingController();
+  final _maxHRCtrl = TextEditingController();
+  final _oldpeakCtrl = TextEditingController();
 
-  // Dropdown selections (default to most common values for testing)
-  double _sex            = 1.0; // Male
-  double _chestPainType  = 2.0; // ASY (most common in dataset)
-  double _fastingBS      = 0.0; // No
-  double _restingECG     = 0.0; // Normal
-  double _exerciseAngina = 0.0; // No
-  double _stSlope        = 1.0; // Flat
+  // Dropdown selections (Main Branch Logic)
+  double _sex = 1.0; 
+  double _chestPainType = 2.0; 
+  double _fastingBS = 0.0; 
+  double _restingECG = 0.0; 
+  double _exerciseAngina = 0.0; 
+  double _stSlope = 1.0; 
 
   @override
   void dispose() {
@@ -48,12 +46,12 @@ class _AssessmentFormScreenState
     super.dispose();
   }
 
+  // BACKEND LOGIC: Kept exactly from Main Branch
   Future<void> _onSubmit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
-      // Build raw inputs list
       final List<double> rawInputs = [
         double.parse(_ageCtrl.text),
         _sex,
@@ -68,31 +66,16 @@ class _AssessmentFormScreenState
         _stSlope,
       ];
 
-      // Normalize inputs using Member 4's ml_service
       final List<double> normalizedInputs = MLService.normalizeInputs(
-        age:            rawInputs[0],
-        sex:            rawInputs[1],
-        chestPainType:  rawInputs[2],
-        restingBP:      rawInputs[3],
-        cholesterol:    rawInputs[4],
-        fastingBS:      rawInputs[5],
-        restingECG:     rawInputs[6],
-        maxHR:          rawInputs[7],
-        exerciseAngina: rawInputs[8],
-        oldpeak:        rawInputs[9],
-        stSlope:        rawInputs[10],
+        age: rawInputs[0], sex: rawInputs[1], chestPainType: rawInputs[2],
+        restingBP: rawInputs[3], cholesterol: rawInputs[4], fastingBS: rawInputs[5],
+        restingECG: rawInputs[6], maxHR: rawInputs[7], exerciseAngina: rawInputs[8],
+        oldpeak: rawInputs[9], stSlope: rawInputs[10],
       );
 
-      // Run TFLite inference
       final double riskScore = await MLService.predictRisk(normalizedInputs);
 
-      // Save to local database
-      await LocalDB.saveUserProfile(
-        rawInputs:  rawInputs,
-        riskScore:  riskScore,
-      );
-
-      // Update Riverpod state so dashboard shows correct risk
+      await LocalDB.saveUserProfile(rawInputs: rawInputs, riskScore: riskScore);
       ref.read(riskProvider.notifier).setRisk(riskScore);
 
       if (mounted) {
@@ -103,10 +86,7 @@ class _AssessmentFormScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -114,148 +94,162 @@ class _AssessmentFormScreenState
     }
   }
 
-  // ── Widget helpers ──────────────────────────────────────────────
-
-  Widget _textField(
-    String label,
-    TextEditingController ctrl,
-    String hint, {
-    String? unit,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: TextFormField(
-        controller:  ctrl,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText:   label,
-          hintText:    hint,
-          suffixText:  unit,
-          border:      const OutlineInputBorder(),
-          filled:      true,
-          fillColor:   Colors.grey.shade50,
-        ),
-        validator: (v) {
-          if (v == null || v.trim().isEmpty) return 'Required';
-          if (double.tryParse(v) == null)    return 'Enter a valid number';
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _dropdown(
-    String label,
-    double value,
-    List<DropdownMenuItem<double>> items,
-    void Function(double?) onChanged,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: DropdownButtonFormField<double>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          border:    const OutlineInputBorder(),
-          filled:    true,
-          fillColor: Colors.grey.shade50,
-        ),
-        items:     items,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black, // UI: Branch Style
       appBar: AppBar(
-        title: const Text('Heart Risk Assessment'),
-        backgroundColor: Colors.red.shade700,
-        foregroundColor: Colors.white,
+        title: const Text("Heart Risk Assessment"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(
+      body: Stack(
+        children: [
+          Positioned(top: -120, right: -80, child: _glow(const Color(0xFF2563EB))),
+          Positioned(bottom: -140, left: -80, child: _glow(const Color(0xFF06B6D4))),
+          
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Colors.red),
-                  SizedBox(height: 16),
-                  Text('Calculating your risk...'),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        _styledField("Age", _ageCtrl, "e.g. 45"),
+                        _styledDropdown("Sex", _sex, [
+                          const DropdownMenuItem(value: 1.0, child: Text('Male')),
+                          const DropdownMenuItem(value: 0.0, child: Text('Female')),
+                        ], (v) => setState(() => _sex = v!)),
+                        _styledDropdown("Chest Pain", _chestPainType, [
+                          const DropdownMenuItem(value: 0.0, child: Text('ATA')),
+                          const DropdownMenuItem(value: 1.0, child: Text('NAP')),
+                          const DropdownMenuItem(value: 2.0, child: Text('ASY')),
+                          const DropdownMenuItem(value: 3.0, child: Text('TA')),
+                        ], (v) => setState(() => _chestPainType = v!)),
+                        _styledField("Resting BP", _restingBPCtrl, "mmHg"),
+                        _styledField("Cholesterol", _cholesterolCtrl, "mg/dL"),
+                        _styledDropdown("Fasting Blood Sugar > 120", _fastingBS, [
+                          const DropdownMenuItem(value: 0.0, child: Text('No')),
+                          const DropdownMenuItem(value: 1.0, child: Text('Yes')),
+                        ], (v) => setState(() => _fastingBS = v!)),
+                        _styledField("Max Heart Rate", _maxHRCtrl, "bpm"),
+                        _styledField("ST Depression (Oldpeak)", _oldpeakCtrl, "e.g. 1.5"),
+                        _styledDropdown("ST Slope", _stSlope, [
+                          const DropdownMenuItem(value: 0.0, child: Text('Up')),
+                          const DropdownMenuItem(value: 1.0, child: Text('Flat')),
+                          const DropdownMenuItem(value: 2.0, child: Text('Down')),
+                        ], (v) => setState(() => _stSlope = v!)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSubmitButton(),
+                  const SizedBox(height: 20),
                 ],
               ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Please fill in your medical details accurately.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _textField('Age', _ageCtrl, 'e.g. 45', unit: 'years'),
-                    _dropdown('Sex', _sex, [
-                      const DropdownMenuItem(value: 1.0, child: Text('Male')),
-                      const DropdownMenuItem(value: 0.0, child: Text('Female')),
-                    ], (v) => setState(() => _sex = v!)),
-                    _dropdown('Chest Pain Type', _chestPainType, [
-                      const DropdownMenuItem(value: 0.0, child: Text('ATA — Atypical Angina')),
-                      const DropdownMenuItem(value: 1.0, child: Text('NAP — Non-Anginal Pain')),
-                      const DropdownMenuItem(value: 2.0, child: Text('ASY — Asymptomatic')),
-                      const DropdownMenuItem(value: 3.0, child: Text('TA — Typical Angina')),
-                    ], (v) => setState(() => _chestPainType = v!)),
-                    _textField('Resting Blood Pressure', _restingBPCtrl, 'e.g. 120', unit: 'mmHg'),
-                    _textField('Cholesterol', _cholesterolCtrl, 'e.g. 200', unit: 'mg/dL'),
-                    _dropdown('Fasting Blood Sugar > 120 mg/dL', _fastingBS, [
-                      const DropdownMenuItem(value: 0.0, child: Text('No')),
-                      const DropdownMenuItem(value: 1.0, child: Text('Yes')),
-                    ], (v) => setState(() => _fastingBS = v!)),
-                    _dropdown('Resting ECG Result', _restingECG, [
-                      const DropdownMenuItem(value: 0.0, child: Text('Normal')),
-                      const DropdownMenuItem(value: 1.0, child: Text('ST — ST-T Wave Abnormality')),
-                      const DropdownMenuItem(value: 2.0, child: Text('LVH — Left Ventricular Hypertrophy')),
-                    ], (v) => setState(() => _restingECG = v!)),
-                    _textField('Max Heart Rate Achieved', _maxHRCtrl, 'e.g. 150', unit: 'bpm'),
-                    _dropdown('Exercise Induced Angina', _exerciseAngina, [
-                      const DropdownMenuItem(value: 0.0, child: Text('No')),
-                      const DropdownMenuItem(value: 1.0, child: Text('Yes')),
-                    ], (v) => setState(() => _exerciseAngina = v!)),
-                    _textField('Oldpeak (ST Depression)', _oldpeakCtrl, 'e.g. 1.5'),
-                    _dropdown('ST Slope', _stSlope, [
-                      const DropdownMenuItem(value: 0.0, child: Text('Up — Upsloping')),
-                      const DropdownMenuItem(value: 1.0, child: Text('Flat')),
-                      const DropdownMenuItem(value: 2.0, child: Text('Down — Downsloping')),
-                    ], (v) => setState(() => _stSlope = v!)),
-
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width:  double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _onSubmit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade700,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Calculate My Risk',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // UI HELPER: Branch Premium Text Field
+  Widget _styledField(String label, TextEditingController ctrl, String hint) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: TextFormField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white),
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white24),
+            labelStyle: const TextStyle(color: Colors.white70),
+            border: InputBorder.none,
+          ),
+          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+        ),
+      ),
+    );
+  }
+
+  // UI HELPER: Branch Premium Dropdown
+  Widget _styledDropdown(String label, double value, List<DropdownMenuItem<double>> items, void Function(double?) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButtonFormField<double>(
+            value: value,
+            dropdownColor: Colors.grey[900],
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: const TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+            ),
+            items: items,
+            onChanged: onChanged,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(30),
+          onTap: _isLoading ? null : _onSubmit,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.3), blurRadius: 20)],
+            ),
+            child: _isLoading
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text("Analyze Risk", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _glow(Color color) {
+    return Container(
+      height: 300, width: 300,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, Colors.transparent], radius: 0.8),
+      ),
     );
   }
 }
