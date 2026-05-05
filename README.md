@@ -70,5 +70,16 @@ divide this project into a team of 4 members such that all members have equal or
 also give the overall project folder structure(1 guy will be creating this repo and others will be cloning it)
 
 
+TEAM DIVISION:
+ (4 Members for Maximum Concurrency)To avoid stepping on each other's toes, divide the app into strict modular components.
+ Member 1: Data Scientist / ML Engineer (The "Static" Guy)
+    Focus: Phase 1.Tasks: Clean the Kaggle dataset, train the predictive model (Random Forest, XGBoost, or a Neural Network), and containerize it. They will build a lightweight Python backend (FastAPI/Flask) that accepts the 11 inputs and returns the float (0 to 1).Concurrency: Can start immediately; doesn't need the mobile app to be ready.
+ Member 2: Frontend & UI/UX Developer (The "Visuals" Guy)
+    Focus: App flow, UI, and visual logic.Tasks: Build the Login screen, the 11-question form, and the main Dashboard. They are responsible for implementing the live graph that plots the accelerometer values, and the UI state changes (green/yellow/red screens based on the final product).Concurrency: Can mock the ML and accelerometer data to build out the screens immediately.
+ Member 3: Mobile Systems & Sensor Engineer (The "Hardware" Guy)
+    Focus: Phase 2.Tasks: Hooking into the native Android/iOS accelerometer APIs. Writing the math logic to convert raw $x, y, z$ arrays into the 0-1 intensity scale. Emitting this value every 10 seconds.Concurrency: Focuses entirely on background services and device hardware APIs.
+ Member 4: Backend / Core Logic Integrator (The "Glue" Guy)
+    Focus: Phase 3 and overall data flow.Tasks: Setting up the authentication (Firebase/Supabase), storing the static risk value so the user doesn't have to fill the form twice, and writing the "Debounce/1-Minute Delay" logic. They will take Member 3's 10-second data, run the time-delay comparison logic, calculate the final product, and trigger the OS-level vibration/audio alerts.
+
 
 
