@@ -1,27 +1,56 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
-// Member 3: add your imports below this line
-import 'dart:async';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'sensor_math.dart';
 import '../core/constants.dart';
 
 // ================================================================
 // Called once at app startup (from main.dart)
+// Integrated: Permission logic & Notification Channels from Main
 // ================================================================
 Future<void> initBackgroundService() async {
+  if (Platform.isAndroid) {
+    final status = await Permission.notification.request();
+    if (!status.isGranted) {
+      print('Notification permission denied.');
+      return;
+    }
+  }
+
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'pulse_edge_channel',
+    'PulseEdge Background Service',
+    description: 'Continuously monitoring your heart health.',
+    importance: Importance.low,
+  );
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  if (Platform.isAndroid) {
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(channel);
+  }
+
   final service = FlutterBackgroundService();
 
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: true,
+      autoStart: false, // Logic from Main
       isForegroundMode: true,
       notificationChannelId: 'pulse_edge_channel',
       initialNotificationTitle: 'PulseEdge',
       initialNotificationContent: 'Monitoring your heart health...',
       foregroundServiceNotificationId: 888,
+      foregroundServiceTypes: [AndroidForegroundType.dataSync], // Required for Android 15
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,
@@ -30,7 +59,7 @@ Future<void> initBackgroundService() async {
     ),
   );
 
-  service.startService();
+  await service.startService();
 }
 
 @pragma('vm:entry-point')
@@ -39,8 +68,8 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 }
 
 // ================================================================
-// THIS IS WHERE MEMBER 3 PUTS THEIR LOGIC
-// This function runs in a separate isolate (background thread)
+// BACKGROUND ISOLATE LOGIC
+// Integrated: Throttled UI updates and Windowed Activity Classification
 // ================================================================
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
@@ -48,30 +77,38 @@ void onStart(ServiceInstance service) async {
     service.setAsForegroundService();
   }
 
-   final List<double> svmBuffer = [];
-
-  // Listen to accelerometer events continuously
-  // sensors_plus emits multiple events per second
+  final List<double> svmBuffer = [];
+  DateTime lastUIUpdate = DateTime.now();
+  
+  // 1. Listen to raw accelerometer events continuously
   accelerometerEvents.listen((AccelerometerEvent event) {
-    // Calculate and normalize each reading as it arrives
-    final double rawSVM    = calculateSVM(event.x, event.y, event.z);
-    final double normalized = normalizeSVM(rawSVM);
+    // Logic: Use SensorMath class for calculations
+    final double rawSVM = SensorMath.calculateSVM(event.x, event.y, event.z);
+    final double normalized = SensorMath.normalizeSVM(rawSVM);
+    
     svmBuffer.add(normalized);
+
+    // THROTTLE: Send raw spikes to UI 5 times per second for the live chart
+    final now = DateTime.now();
+    if (now.difference(lastUIUpdate).inMilliseconds > 200) {
+      service.invoke('updateIntensity', {"intensity": normalized});
+      lastUIUpdate = now;
+    }
   });
 
-  // Every 10 seconds: average the buffer, classify, broadcast to UI
+  // 2. Windowed Processing: Every 10 seconds, classify the activity
   Timer.periodic(const Duration(seconds: SENSOR_WINDOW_SECONDS), (timer) {
     if (svmBuffer.isNotEmpty) {
-      final double avgIntensity = computeAverage(svmBuffer);
-      final String activity     = classifyActivity(avgIntensity);
+      final double avgIntensity = SensorMath.computeAverage(svmBuffer);
+      final String activity = SensorMath.classifyActivity(avgIntensity);
 
-      // Send data to the Flutter UI (Member 4 listens to this)
-      service.invoke('intensityUpdate', {
-        'intensity': avgIntensity,
-        'activity':  activity,
+      // Broadcast the stabilized "Activity State" to the UI and Alert logic
+      service.invoke('updateStabilizedIntensity', {
+        'average': avgIntensity,
+        'activity': activity,
       });
 
-      svmBuffer.clear();
+      svmBuffer.clear(); // Reset for the next window
     }
   });
 }

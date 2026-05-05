@@ -1,22 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/providers.dart';
+// Logic & Services from Main
+import '../providers/app_state.dart';
+import '../core/constants.dart';
+import '../logic/alert_manager.dart';
+import '../services/local_db.dart';
+import '../services/suggestion_engine.dart'; // From HEAD
+
+// Components
 import '../components/live_chart.dart';
-import '../services/suggestion_engine.dart';
+import 'assessment_form.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
+  // UI Helper: Maps Main logic constants to Head colors
+  Color _alertColor(String level) {
+    switch (level) {
+      case ALERT_STABLE:   return Colors.green;
+      case ALERT_ELEVATED: return Colors.orange;
+      case ALERT_CRITICAL: return Colors.red;
+      default:             return Colors.grey;
+    }
+  }
+
+  // UI Helper: Maps Main logic constants to Head icons
+  IconData _activityIcon(String activity) {
+    switch (activity) {
+      case ACTIVITY_SITTING: return Icons.chair_outlined;
+      case ACTIVITY_WALKING: return Icons.directions_walk;
+      case ACTIVITY_RUNNING: return Icons.directions_run;
+      default:               return Icons.device_unknown;
+    }
+  }
+
+  Color _riskColor(double risk) {
+    if (risk < 0.3) return Colors.greenAccent;
+    if (risk < 0.7) return Colors.orangeAccent;
+    return Colors.redAccent;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activity = ref.watch(activityProvider);
-    final alert = ref.watch(alertLevelProvider);
-    final risk = ref.watch(riskProvider);
-    final intensity = ref.watch(intensityProvider);
+    // Watches from Main Branch Providers
+    final alertLevel = ref.watch(alertLevelProvider);
+    final activity   = ref.watch(activityProvider);
+    final risk       = ref.watch(riskProvider);
+    final intensity  = ref.watch(intensityProvider);
+    final strain     = ref.watch(strainProductProvider);
+
+    final alertColor = _alertColor(alertLevel);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F1A),
+      backgroundColor: const Color(0xFF0B0F1A), // Dark UI from Head
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -25,13 +62,26 @@ class DashboardScreen extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white70),
+            onPressed: () async {
+              await LocalDB.clearProfile();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const AssessmentFormScreen()),
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔥 MAIN CARD
-            _mainCard(activity, alert, risk, intensity),
+            // 🔥 MAIN HERO CARD (Head UI with Main Data)
+            _mainHeroCard(activity, alertLevel, risk, intensity, alertColor),
 
             const SizedBox(height: 20),
 
@@ -40,16 +90,15 @@ class DashboardScreen extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
-            // ⚡ EXTRA STATS
-            _extraStats(),
+            // ⚡ EXTRA STATS (Integrated Strain Calculation from Main)
+            _extraStats(strain),
           ],
         ),
       ),
     );
   }
 
-  // 🔥 MAIN CARD (Hero UI)
-  Widget _mainCard(String activity, String alert, double risk, double intensity) {
+  Widget _mainHeroCard(String activity, String alert, double risk, double intensity, Color alertColor) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -71,34 +120,30 @@ class DashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HEADER
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                activity,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Icon(_activityIcon(activity), color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Text(activity, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _alertColor(alert),
+                  color: alertColor.withOpacity(0.2),
+                  border: Border.all(color: alertColor),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  alert,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                child: Text(alert, style: TextStyle(color: alertColor, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
 
           const SizedBox(height: 30),
 
-          // 🎯 CIRCULAR RISK
           Center(
             child: Stack(
               alignment: Alignment.center,
@@ -116,18 +161,9 @@ class DashboardScreen extends ConsumerWidget {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      "${(risk * 100).toInt()}%",
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Risk Level",
-                      style: TextStyle(color: Colors.white60),
-                    ),
+                    Text("${(risk * 100).toInt()}%",
+                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const Text("Risk Level", style: TextStyle(color: Colors.white60)),
                   ],
                 ),
               ],
@@ -136,19 +172,7 @@ class DashboardScreen extends ConsumerWidget {
 
           const SizedBox(height: 30),
 
-          // ⚡ STATS
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _statItem("Intensity", intensity.toStringAsFixed(2)),
-              _statItem("Status", alert),
-              _statItem("Mode", activity),
-            ],
-          ),
-
-          const SizedBox(height: 25),
-
-          // 🤖 AI SUGGESTION
+          // 🤖 AI SUGGESTION (Logic from Head)
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -162,18 +186,34 @@ class DashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     generateSuggestion(risk, activity),
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ),
               ],
             ),
           ),
+          
+          if (alert == ALERT_CRITICAL) ...[
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => AlertManager.dismissAlert(),
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Dismiss Critical Alarm'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade900,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ]
         ],
       ),
     );
   }
 
-  // 📊 CHART CARD
   Widget _chartCard() {
     return Container(
       height: 250,
@@ -185,10 +225,7 @@ class DashboardScreen extends ConsumerWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Live Activity",
-            style: TextStyle(fontSize: 16, color: Colors.white70),
-          ),
+          Text("Live Intensity", style: TextStyle(fontSize: 16, color: Colors.white70, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
           Expanded(child: LiveChart()),
         ],
@@ -196,12 +233,11 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ⚡ EXTRA STATS
-  Widget _extraStats() {
+  Widget _extraStats(double strain) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _miniCard("Steps", "1,240"),
+        _miniCard("Strain Index", strain.toStringAsFixed(2)),
         _miniCard("Active", "32m"),
         _miniCard("Calories", "86"),
       ],
@@ -219,65 +255,12 @@ class DashboardScreen extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white60,
-              ),
-            ),
+            Text(title, style: const TextStyle(fontSize: 12, color: Colors.white60)),
           ],
         ),
       ),
     );
-  }
-
-  Widget _statItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white60,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _riskColor(double risk) {
-    if (risk < 0.3) return Colors.greenAccent;
-    if (risk < 0.7) return Colors.orangeAccent;
-    return Colors.redAccent;
-  }
-
-  Color _alertColor(String alert) {
-    switch (alert) {
-      case "STABLE":
-        return Colors.green;
-      case "WARNING":
-        return Colors.orange;
-      case "DANGER":
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
   }
 }

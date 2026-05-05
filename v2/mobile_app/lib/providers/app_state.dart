@@ -1,43 +1,70 @@
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants.dart';
 
 // ================================================================
-// MOCK VALUES (hardcoded for development)
-// Member 4 will replace these with real data sources later.
-// Member 2: Use ref.watch() on these providers in your widgets.
+// LIVE VALUES (Modern Notifier + Stream Adapter Architecture)
 // ================================================================
 
-// Phase 1 — Static risk score from TFLite model (0.0 to 1.0)
-// Member 4 will update this after running ml_service.dart inference
-final riskProvider = StateProvider<double>((ref) => 0.45);
+// 1. Static Risk (Main Branch Backend Logic)
+class RiskNotifier extends Notifier<double> {
+  @override
+  double build() => 0.0; // Starts at 0 until form is submitted
+  
+  void setRisk(double value) => state = value; 
+}
+final riskProvider = NotifierProvider<RiskNotifier, double>(RiskNotifier.new);
 
-// Phase 2 — Real-time intensity from accelerometer (0.0 to 1.0)
-// Member 3 will update this every 10 seconds via background service
-final intensityProvider = StateProvider<double>((ref) => 0.20);
+// ================================================================
+// BACKGROUND SERVICE STREAMS (Main Branch Internal Logic)
+// ================================================================
 
-// Computed: Activity label based on current intensity
-// Member 2: watch this to show SITTING / WALKING / RUNNING label
-final activityProvider = Provider<String>((ref) {
-  final intensity = ref.watch(intensityProvider);
-  if (intensity <= INTENSITY_SITTING_MAX) return ACTIVITY_SITTING;
-  if (intensity <= INTENSITY_WALKING_MAX) return ACTIVITY_WALKING;
-  return ACTIVITY_RUNNING;
+// Listens to the 10x/sec live feed for the chart
+final _liveStreamProvider = StreamProvider<double>((ref) {
+  return FlutterBackgroundService()
+      .on('updateIntensity')
+      .map((event) => (event?['intensity'] as num?)?.toDouble() ?? 0.0);
 });
 
-// Computed: Alert level based on risk × intensity
-// Member 2: watch this to change screen color (green/yellow/red)
+// Listens to the 10-second stabilized feed for the alerts
+final _stabilizedStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
+  return FlutterBackgroundService()
+      .on('updateStabilizedIntensity')
+      .map((event) => {
+            'average': (event?['average'] as num?)?.toDouble() ?? 0.0,
+            'activity': event?['activity'] as String? ?? ACTIVITY_SITTING,
+          });
+});
+
+// ================================================================
+// UI-FACING PROVIDERS (Keeping your Branch names for the UI)
+// ================================================================
+
+// UI watches this for the chart (intensityProvider name from your branch)
+final intensityProvider = Provider<double>((ref) {
+  return ref.watch(_liveStreamProvider).value ?? 0.0;
+});
+
+// UI watches this for the label (activityProvider name from your branch)
+final activityProvider = Provider<String>((ref) {
+  final data = ref.watch(_stabilizedStreamProvider).value;
+  return data?['activity'] as String? ?? ACTIVITY_SITTING;
+});
+
+// Computed: The final strain product value (risk × stabilized intensity)
+final strainProductProvider = Provider<double>((ref) {
+  final risk = ref.watch(riskProvider);
+  final data = ref.watch(_stabilizedStreamProvider).value;
+  final averageIntensity = data?['average'] as double? ?? 0.0;
+  
+  return risk * averageIntensity;
+});
+
+// Computed: Alert level (alertLevelProvider name from your branch)
 final alertLevelProvider = Provider<String>((ref) {
-  final risk      = ref.watch(riskProvider);
-  final intensity = ref.watch(intensityProvider);
-  final product   = risk * intensity;
+  final product = ref.watch(strainProductProvider);
 
   if (product <= STRAIN_STABLE_MAX)   return ALERT_STABLE;
   if (product <= STRAIN_ELEVATED_MAX) return ALERT_ELEVATED;
   return ALERT_CRITICAL;
-});
-
-// Computed: The final strain product value (risk × intensity)
-// Member 2: watch this to display the raw number on the dashboard
-final strainProductProvider = Provider<double>((ref) {
-  return ref.watch(riskProvider) * ref.watch(intensityProvider);
 });
