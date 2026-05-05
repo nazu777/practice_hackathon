@@ -9,6 +9,6 @@ process for merging the codes in two branches
 2. go inside the folder of main branch -> cd practice_hackathon
 3. then pull the child branch -> git checkout shreyansh_ui_updated_folder_name_match
 4. now merge with main -> git merge origin/main (might show errors)
-5. resolve the easy conflicting files that can be taken from main directly ex: generated_plugin_registrant.cc, generated_plugins.cmake, .metadata, pubspec.lock.
+5. resolve the easy conflicting files that can be taken from main directly ex: generated_plugin_registrant.cc, generated_plugins.cmake, .metadata, pubspec.lock. swift
    execute the above function using this -> git checkout --theirs v2/mobile_app/windows/flutter/generated_plugin_registrant.cc
 6. 
