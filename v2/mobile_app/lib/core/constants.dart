@@ -14,11 +14,11 @@ const String ALERT_ELEVATED = "ELEVATED";
 const String ALERT_CRITICAL = "CRITICAL";
 
 // --- Intensity Thresholds (Member 3 uses these to classify activity) ---
-// 0.00 to 0.20 = Sitting/Resting
-// 0.21 to 0.60 = Walking/Light activity
-// 0.61 to 1.00 = Running/Vigorous
-const double INTENSITY_SITTING_MAX = 0.20;
-const double INTENSITY_WALKING_MAX = 0.60;
+// 0.00 to 0.10 = Sitting/Resting (Calibrated for real-world g-force)
+// 0.11 to 0.50 = Walking/Light activity
+// 0.51 to 1.00 = Running/Vigorous
+const double INTENSITY_SITTING_MAX = 0.10;
+const double INTENSITY_WALKING_MAX = 0.50;
 
 // --- Final Strain Product Thresholds (Member 4 uses for alert logic) ---
 // strain = risk × intensity
@@ -36,8 +36,8 @@ const String MODEL_PATH = "assets/models/heart_risk.tflite";
 
 // --- Sensor Math ---
 // Maximum expected dynamic SVM for a sprinting person (in g-force units)
-// Used to normalize raw SVM to 0.0–1.0
-const double MAX_EXPECTED_SVM = 2.5;
+// Calibrated from 2.5 to 1.5 to provide better dynamic range for walking vs running.
+const double MAX_EXPECTED_SVM = 1.5;
 
 // How often we compute the average and push to providers
 const int SENSOR_WINDOW_SECONDS = 10;

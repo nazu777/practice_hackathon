@@ -73,7 +73,7 @@ class AlertManager {
       case ALERT_ELEVATED:
         // Elevated strain — single strong vibration, no sound
         await _stopAllAlerts();
-        final bool? hasVibrator = await Vibration.hasVibrator();
+        final bool hasVibrator = await Vibration.hasVibrator();
         if (hasVibrator == true) {
           Vibration.vibrate(duration: 800, amplitude: 200);
         }
@@ -85,7 +85,7 @@ class AlertManager {
           _isCriticalAlarmPlaying = true;
 
           // Vibration: repeating pattern [vibrate 500ms, pause 200ms]
-          final bool? hasVibrator = await Vibration.hasVibrator();
+          final bool hasVibrator = await Vibration.hasVibrator();
           if (hasVibrator == true) {
             Vibration.vibrate(
               pattern: [0, 500, 200, 500, 200, 500],

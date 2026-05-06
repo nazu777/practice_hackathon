@@ -117,7 +117,13 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                   Expanded(
                     child: ListView(
                       children: [
-                        _styledField("Age", _ageCtrl, "e.g. 45"),
+                        _styledField("Age", _ageCtrl, "e.g. 45", validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          final age = double.tryParse(v);
+                          if (age == null) return 'Invalid number';
+                          if (age <= 0 || age > 120) return 'Invalid age (must be 1-120)';
+                          return null;
+                        }),
                         _styledDropdown("Sex", _sex, [
                           const DropdownMenuItem(value: 1.0, child: Text('Male')),
                           const DropdownMenuItem(value: 0.0, child: Text('Female')),
@@ -134,7 +140,16 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                           const DropdownMenuItem(value: 0.0, child: Text('No')),
                           const DropdownMenuItem(value: 1.0, child: Text('Yes')),
                         ], (v) => setState(() => _fastingBS = v!)),
+                        _styledDropdown("Resting ECG", _restingECG, [
+                          const DropdownMenuItem(value: 0.0, child: Text('Normal')),
+                          const DropdownMenuItem(value: 1.0, child: Text('ST')),
+                          const DropdownMenuItem(value: 2.0, child: Text('LVH')),
+                        ], (v) => setState(() => _restingECG = v!)),
                         _styledField("Max Heart Rate", _maxHRCtrl, "bpm"),
+                        _styledDropdown("Exercise Induced Angina", _exerciseAngina, [
+                          const DropdownMenuItem(value: 0.0, child: Text('No')),
+                          const DropdownMenuItem(value: 1.0, child: Text('Yes')),
+                        ], (v) => setState(() => _exerciseAngina = v!)),
                         _styledField("ST Depression (Oldpeak)", _oldpeakCtrl, "e.g. 1.5"),
                         _styledDropdown("ST Slope", _stSlope, [
                           const DropdownMenuItem(value: 0.0, child: Text('Up')),
@@ -157,7 +172,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   // UI HELPER: Branch Premium Text Field
-  Widget _styledField(String label, TextEditingController ctrl, String hint) {
+  Widget _styledField(String label, TextEditingController ctrl, String hint, {String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Container(
@@ -178,7 +193,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             labelStyle: const TextStyle(color: Colors.white70),
             border: InputBorder.none,
           ),
-          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+          validator: validator ?? (v) => (v == null || v.isEmpty) ? 'Required' : null,
         ),
       ),
     );
@@ -197,7 +212,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButtonFormField<double>(
-            value: value,
+            initialValue: value,
             dropdownColor: Colors.grey[900],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(

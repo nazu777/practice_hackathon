@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -81,7 +80,7 @@ void onStart(ServiceInstance service) async {
   DateTime lastUIUpdate = DateTime.now();
   
   // 1. Listen to raw accelerometer events continuously
-  accelerometerEvents.listen((AccelerometerEvent event) {
+  accelerometerEventStream().listen((AccelerometerEvent event) {
     // Logic: Use SensorMath class for calculations
     final double rawSVM = SensorMath.calculateSVM(event.x, event.y, event.z);
     final double normalized = SensorMath.normalizeSVM(rawSVM);

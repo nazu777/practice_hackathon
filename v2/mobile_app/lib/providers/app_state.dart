@@ -62,9 +62,15 @@ final strainProductProvider = Provider<double>((ref) {
 
 // Computed: Alert level (alertLevelProvider name from your branch)
 final alertLevelProvider = Provider<String>((ref) {
+  final risk = ref.watch(riskProvider);
   final product = ref.watch(strainProductProvider);
 
-  if (product <= STRAIN_STABLE_MAX)   return ALERT_STABLE;
-  if (product <= STRAIN_ELEVATED_MAX) return ALERT_ELEVATED;
-  return ALERT_CRITICAL;
+  // If the user is physically exerting themselves to a dangerous strain level,
+  // or if their baseline risk is extremely high, trigger Critical.
+  if (product > STRAIN_ELEVATED_MAX || risk >= 0.80) return ALERT_CRITICAL;
+  
+  // If their baseline risk is moderately high, or strain is elevated, trigger Elevated.
+  if (product > STRAIN_STABLE_MAX   || risk >= 0.60) return ALERT_ELEVATED;
+  
+  return ALERT_STABLE;
 });

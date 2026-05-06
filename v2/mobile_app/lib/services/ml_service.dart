@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 // ================================================================
