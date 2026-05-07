@@ -69,8 +69,10 @@ step 3(initialise flutter in firebase):
       this depends on the specific hackathon because this is basically UI integration to the backend logic,the backend logic implementaion has been discussed in above steps
       
       
-      
-      
+NEED FOR VIRTUAL ENVIRONMENT(TO RUN TENSORFLOW):
+   py -3.11 -m venv venv
+   .\venv\Scripts\activate
+   pip install -r requirements.txt
 
 PROMPT FOR OUR 12 HOUR HACKATHON PROJECT
 
