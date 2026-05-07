@@ -124,7 +124,7 @@ class OnboardingScreen extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const AssessmentForm(),
+            builder: (_) => AssessmentFormScreen(),
           ),
         );
       },
