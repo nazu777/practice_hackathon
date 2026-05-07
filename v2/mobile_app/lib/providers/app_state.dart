@@ -19,8 +19,27 @@ final riskProvider = NotifierProvider<RiskNotifier, double>(RiskNotifier.new);
 // BACKGROUND SERVICE STREAMS (Main Branch Internal Logic)
 // ================================================================
 
+class MockSensorEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  
+  void setMock(bool value) => state = value;
+}
+final mockSensorEnabledProvider = NotifierProvider<MockSensorEnabledNotifier, bool>(MockSensorEnabledNotifier.new);
+
 // Listens to the 10x/sec live feed for the chart
 final _liveStreamProvider = StreamProvider<double>((ref) {
+  final isMock = ref.watch(mockSensorEnabledProvider);
+  if (isMock) {
+    return Stream.periodic(const Duration(milliseconds: 100), (count) {
+      // Simulate sitting, walking, running bursts
+      double base = 0.1;
+      if (count % 300 > 200) base = 0.8; // Burst
+      else if (count % 300 > 100) base = 0.3; // Walk
+      return base + (DateTime.now().millisecond / 10000.0); // Add jitter
+    });
+  }
+
   return FlutterBackgroundService()
       .on('updateIntensity')
       .map((event) => (event?['intensity'] as num?)?.toDouble() ?? 0.0);
@@ -28,6 +47,17 @@ final _liveStreamProvider = StreamProvider<double>((ref) {
 
 // Listens to the 10-second stabilized feed for the alerts
 final _stabilizedStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
+  final isMock = ref.watch(mockSensorEnabledProvider);
+  if (isMock) {
+    return Stream.periodic(const Duration(seconds: 10), (count) {
+      double avg = 0.1;
+      String act = ACTIVITY_SITTING;
+      if (count % 30 > 20) { avg = 0.8; act = ACTIVITY_RUNNING; }
+      else if (count % 30 > 10) { avg = 0.3; act = ACTIVITY_WALKING; }
+      return {'average': avg, 'activity': act};
+    });
+  }
+
   return FlutterBackgroundService()
       .on('updateStabilizedIntensity')
       .map((event) => {

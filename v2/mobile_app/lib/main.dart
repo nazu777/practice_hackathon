@@ -9,12 +9,13 @@ import 'screens/assessment_form.dart';
 import 'screens/dashboard_screen.dart';
 
 // Frontend / UI Imports (From your Branch)
-import 'screens/onboarding_screen.dart';
+import 'screens/auth_gate.dart';
 import 'core/theme.dart';
 
 void main() async {
   // Keep the backend initialization logic from Incoming (Left)
   WidgetsFlutterBinding.ensureInitialized();
+  
 
   // 1. Fire off the UI immediately
   runApp(
@@ -53,7 +54,7 @@ class PulseEdgeApp extends StatelessWidget {
       // Keep your Branch's routing structure
       initialRoute: '/',
       routes: {
-        '/': (context) => const OnboardingScreen(),
+        '/': (context) => const AuthGate(),
         // You can integrate the Main branch's screens here later:
         '/dashboard': (_) => const DashboardScreen(),
         '/form': (_) => const AssessmentFormScreen(),

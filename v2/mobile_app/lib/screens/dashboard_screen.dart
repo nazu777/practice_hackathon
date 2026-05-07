@@ -11,6 +11,7 @@ import '../services/suggestion_engine.dart'; // From HEAD
 // Components
 import '../components/live_chart.dart';
 import 'assessment_form.dart';
+import 'sidebar_drawer.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -54,6 +55,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0F1A), // Dark UI from Head
+      drawer: const SidebarDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

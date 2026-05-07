@@ -80,6 +80,14 @@ class LocalDB {
     return rows.first['risk_score'] as double;
   }
 
+  /// Load the full profile
+  static Future<Map<String, dynamic>?> getSavedProfile() async {
+    final db   = await _db;
+    final rows = await db.query('user_profile', limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
   /// Returns true if the user has already filled the assessment form.
   static Future<bool> hasProfile() async {
     final db   = await _db;

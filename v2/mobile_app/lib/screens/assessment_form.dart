@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_state.dart';
 import '../services/ml_service.dart';
 import '../services/local_db.dart';
+import '../logic/form_validator.dart';
+import '../providers/auth_provider.dart';
 import 'dashboard_screen.dart';
 
 // ================================================================
@@ -35,6 +37,31 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   double _restingECG = 0.0; 
   double _exerciseAngina = 0.0; 
   double _stSlope = 1.0; 
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingProfile();
+  }
+
+  Future<void> _loadExistingProfile() async {
+    final profile = await LocalDB.getSavedProfile();
+    if (profile != null) {
+      setState(() {
+        _ageCtrl.text = profile['age'].toString();
+        _sex = profile['sex'] as double;
+        _chestPainType = profile['chest_pain_type'] as double;
+        _restingBPCtrl.text = profile['resting_bp'].toString();
+        _cholesterolCtrl.text = profile['cholesterol'].toString();
+        _fastingBS = profile['fasting_bs'] as double;
+        _restingECG = profile['resting_ecg'] as double;
+        _maxHRCtrl.text = profile['max_hr'].toString();
+        _exerciseAngina = profile['exercise_angina'] as double;
+        _oldpeakCtrl.text = profile['oldpeak'].toString();
+        _stSlope = profile['st_slope'] as double;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -78,6 +105,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
       await LocalDB.saveUserProfile(rawInputs: rawInputs, riskScore: riskScore);
       ref.read(riskProvider.notifier).setRisk(riskScore);
 
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
@@ -117,7 +145,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                   Expanded(
                     child: ListView(
                       children: [
-                        _styledField("Age", _ageCtrl, "e.g. 45"),
+                        _styledField("Age", _ageCtrl, "e.g. 45", validator: FormValidator.validateAge),
                         _styledDropdown("Sex", _sex, [
                           const DropdownMenuItem(value: 1.0, child: Text('Male')),
                           const DropdownMenuItem(value: 0.0, child: Text('Female')),
@@ -128,14 +156,23 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                           const DropdownMenuItem(value: 2.0, child: Text('ASY')),
                           const DropdownMenuItem(value: 3.0, child: Text('TA')),
                         ], (v) => setState(() => _chestPainType = v!)),
-                        _styledField("Resting BP", _restingBPCtrl, "mmHg"),
-                        _styledField("Cholesterol", _cholesterolCtrl, "mg/dL"),
+                        _styledField("Resting BP", _restingBPCtrl, "mmHg", validator: FormValidator.validateRestingBP),
+                        _styledField("Cholesterol", _cholesterolCtrl, "mg/dL", validator: FormValidator.validateCholesterol),
                         _styledDropdown("Fasting Blood Sugar > 120", _fastingBS, [
                           const DropdownMenuItem(value: 0.0, child: Text('No')),
                           const DropdownMenuItem(value: 1.0, child: Text('Yes')),
                         ], (v) => setState(() => _fastingBS = v!)),
-                        _styledField("Max Heart Rate", _maxHRCtrl, "bpm"),
-                        _styledField("ST Depression (Oldpeak)", _oldpeakCtrl, "e.g. 1.5"),
+                        _styledDropdown("Resting ECG", _restingECG, [
+                          const DropdownMenuItem(value: 0.0, child: Text('Normal')),
+                          const DropdownMenuItem(value: 1.0, child: Text('ST')),
+                          const DropdownMenuItem(value: 2.0, child: Text('LVH')),
+                        ], (v) => setState(() => _restingECG = v!)),
+                        _styledField("Max Heart Rate", _maxHRCtrl, "bpm", validator: FormValidator.validateMaxHR),
+                        _styledDropdown("Exercise Angina", _exerciseAngina, [
+                          const DropdownMenuItem(value: 0.0, child: Text('No')),
+                          const DropdownMenuItem(value: 1.0, child: Text('Yes')),
+                        ], (v) => setState(() => _exerciseAngina = v!)),
+                        _styledField("ST Depression (Oldpeak)", _oldpeakCtrl, "e.g. 1.5", validator: FormValidator.validateOldpeak),
                         _styledDropdown("ST Slope", _stSlope, [
                           const DropdownMenuItem(value: 0.0, child: Text('Up')),
                           const DropdownMenuItem(value: 1.0, child: Text('Flat')),
@@ -157,7 +194,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
   }
 
   // UI HELPER: Branch Premium Text Field
-  Widget _styledField(String label, TextEditingController ctrl, String hint) {
+  Widget _styledField(String label, TextEditingController ctrl, String hint, {String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Container(
@@ -178,7 +215,7 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
             labelStyle: const TextStyle(color: Colors.white70),
             border: InputBorder.none,
           ),
-          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+          validator: validator ?? (v) => (v == null || v.isEmpty) ? 'Required' : null,
         ),
       ),
     );

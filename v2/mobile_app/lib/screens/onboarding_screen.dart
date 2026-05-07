@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'assessment_form.dart';
+import 'auth_screen.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
@@ -124,7 +124,7 @@ class OnboardingScreen extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const AssessmentForm(),
+            builder: (_) => const AuthScreen(),
           ),
         );
       },
