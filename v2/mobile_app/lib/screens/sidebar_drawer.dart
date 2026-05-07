@@ -2,32 +2,100 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_state.dart';
 import '../providers/auth_provider.dart';
+import '../services/supabase_db_service.dart';
+import '../core/error_handler.dart';
 import 'assessment_form.dart';
 
 class SidebarDrawer extends ConsumerWidget {
   const SidebarDrawer({super.key});
 
   void _showRatingDialog(BuildContext context, WidgetRef ref) {
+    int selectedStars = 0;
+    bool isSubmitted = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text("Rate PulseEdge", style: TextStyle(color: Colors.white)),
-        content: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(5, (index) => 
-            IconButton(
-              icon: const Icon(Icons.star_border, color: Colors.cyanAccent, size: 30),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                  // Rating saved locally or handled differently now.
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Thanks for rating!"), backgroundColor: Colors.green),
-                  );
-                }
-              },
-            )
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            isSubmitted ? "Thank You!" : "Rate PulseEdge",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!isSubmitted) ...[
+                const Text(
+                  "How would you rate your experience?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final starValue = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starValue <= selectedStars ? Icons.star : Icons.star_border,
+                        color: starValue <= selectedStars ? Colors.amber : Colors.cyanAccent,
+                        size: 36,
+                      ),
+                      onPressed: () => setState(() => selectedStars = starValue),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: selectedStars == 0 ? null : () async {
+                    setState(() => isSubmitted = true);
+                    
+                    // Sync to Supabase
+                    final currentUser = ref.read(authStateProvider).value;
+                    if (currentUser != null) {
+                      try {
+                        await SupabaseDBService.syncRating(
+                          userId: currentUser.id,
+                          stars: selectedStars,
+                        );
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Cloud Sync Failed: ${ErrorHandler.getMessage(e)}"),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      }
+                    }
+
+                    // Auto-close after a delay
+                    Future.delayed(const Duration(seconds: 2), () {
+                      if (context.mounted) Navigator.pop(ctx);
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyanAccent,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  ),
+                  child: const Text("Submit", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ] else ...[
+                const Icon(Icons.check_circle, color: Colors.greenAccent, size: 60),
+                const SizedBox(height: 16),
+                const Text(
+                  "rating saved! thanks!",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
           ),
         ),
       ),

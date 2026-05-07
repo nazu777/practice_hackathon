@@ -90,11 +90,37 @@ final strainProductProvider = Provider<double>((ref) {
   return risk * averageIntensity;
 });
 
+// 4. Dismissed State (For manual override)
+class DismissedAlertNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void setDismissed(bool value) => state = value;
+}
+final dismissedAlertProvider = NotifierProvider<DismissedAlertNotifier, bool>(DismissedAlertNotifier.new);
+
 // Computed: Alert level (alertLevelProvider name from your branch)
 final alertLevelProvider = Provider<String>((ref) {
   final product = ref.watch(strainProductProvider);
+  final isDismissed = ref.watch(dismissedAlertProvider);
 
-  if (product <= STRAIN_STABLE_MAX)   return ALERT_STABLE;
-  if (product <= STRAIN_ELEVATED_MAX) return ALERT_ELEVATED;
-  return ALERT_CRITICAL;
+  String level;
+  if (product <= STRAIN_STABLE_MAX) {
+    level = ALERT_STABLE;
+  } else if (product <= STRAIN_ELEVATED_MAX) {
+    level = ALERT_ELEVATED;
+  } else {
+    level = ALERT_CRITICAL;
+  }
+
+  // If the user manually dismissed it, force it to STABLE
+  if (isDismissed && level == ALERT_CRITICAL) {
+    return ALERT_STABLE;
+  }
+
+  // Reset dismissal when the level drops back down
+  if (level != ALERT_CRITICAL && isDismissed) {
+    Future.microtask(() => ref.read(dismissedAlertProvider.notifier).setDismissed(false));
+  }
+
+  return level;
 });

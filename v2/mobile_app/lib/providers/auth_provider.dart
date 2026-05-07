@@ -9,9 +9,23 @@ final authServiceProvider = Provider<AuthService>((ref) {
 });
 
 class AuthNotifier extends AsyncNotifier<User?> {
+  StreamSubscription? _authSubscription;
+
   @override
   FutureOr<User?> build() async {
     final authService = ref.watch(authServiceProvider);
+
+    _authSubscription = await authService.onAuthStateChange((event, session) {
+      final eventName = event.toString().toLowerCase();
+      if (eventName.contains('signedin') || eventName.contains('signedout') || eventName.contains('tokenrefreshed')) {
+        ref.invalidateSelf();
+      }
+    });
+
+    ref.onDispose(() {
+      _authSubscription?.cancel();
+    });
+
     return await authService.checkAuthStatus();
   }
 

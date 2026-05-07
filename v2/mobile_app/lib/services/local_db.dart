@@ -1,10 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'supabase_db_service.dart';
+import 'auth_service.dart';
 
 // ================================================================
-// PulseEdge — Local SQLite Database
+// PulseEdge — Local SQLite Database with Supabase Sync
 // Stores user profile and risk score on-device.
-// No cloud needed. Data persists across app restarts.
+// Optionally syncs to Supabase for cloud backup.
 // ================================================================
 
 class LocalDB {
@@ -46,6 +48,7 @@ class LocalDB {
 
   /// Save or overwrite the user's profile and risk score.
   /// Only one profile is kept at a time (previous is deleted).
+  /// Optionally syncs to Supabase if user is authenticated.
   static Future<void> saveUserProfile({
     required List<double> rawInputs,
     required double riskScore,
@@ -70,6 +73,27 @@ class LocalDB {
       'risk_score':      riskScore,
       'created_at':      DateTime.now().toIso8601String(),
     });
+
+    // Sync to Supabase if user is authenticated
+    final currentUser = AuthService().currentUser;
+    if (currentUser != null) {
+      try {
+        await SupabaseDBService.syncUserProfile(currentUser, currentRisk: riskScore);
+        await SupabaseDBService.syncHealthParameters(
+          userId: currentUser.id,
+          parameters: rawInputs,
+        );
+        await SupabaseDBService.syncRiskHistory(
+          userId: currentUser.id,
+          riskScore: riskScore,
+          parameters: rawInputs,
+        );
+      } catch (e) {
+        print('SUPABASE ERROR (LocalDB Sync): $e');
+      }
+    } else {
+      print('SYNC SKIPPED: No authenticated user found.');
+    }
   }
 
   /// Load the saved risk score. Returns null if no profile exists yet.

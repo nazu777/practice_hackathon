@@ -83,7 +83,7 @@ class DashboardScreen extends ConsumerWidget {
         child: Column(
           children: [
             // 🔥 MAIN HERO CARD (Head UI with Main Data)
-            _mainHeroCard(activity, alertLevel, risk, intensity, alertColor),
+            _mainHeroCard(ref, activity, alertLevel, risk, intensity, alertColor),
 
             const SizedBox(height: 20),
 
@@ -100,7 +100,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _mainHeroCard(String activity, String alert, double risk, double intensity, Color alertColor) {
+  Widget _mainHeroCard(WidgetRef ref, String activity, String alert, double risk, double intensity, Color alertColor) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -200,7 +200,10 @@ class DashboardScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => AlertManager.dismissAlert(),
+                onPressed: () {
+                  ref.read(dismissedAlertProvider.notifier).setDismissed(true);
+                  AlertManager.dismissAlert();
+                },
                 icon: const Icon(Icons.check_circle),
                 label: const Text('Dismiss Critical Alarm'),
                 style: ElevatedButton.styleFrom(

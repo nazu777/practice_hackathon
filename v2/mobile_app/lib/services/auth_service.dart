@@ -1,130 +1,129 @@
-import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user_model.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_model.dart' as app_model;
 
 class AuthService {
-  static const String _apiHost = String.fromEnvironment('API_HOST', defaultValue: '');
+  // Singleton pattern
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
-  // Use 10.0.2.2 for Android emulator, 127.0.0.1 for desktop, and override with --dart-define on physical devices.
-  static String get baseUrl {
-    if (_apiHost.isNotEmpty) {
-      return '$_apiHost/api/auth';
-    }
-
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:5000/api/auth';
-    }
-
-    return 'http://127.0.0.1:5000/api/auth';
-  }
-
-  static const String _tokenKey = 'auth_token';
+  app_model.User? _currentUser;
   
-  // Current User memory cache
-  User? _currentUser;
-  User? get currentUser => _currentUser;
-
-  Future<void> init() async {
-    await checkAuthStatus();
+  app_model.User? get currentUser {
+    if (_currentUser != null) return _currentUser;
+    
+    // Fallback to current session if local variable is null
+    final user = _client.auth.currentUser;
+    if (user != null) {
+      _currentUser = app_model.User(id: user.id, email: user.email ?? '');
+    }
+    return _currentUser;
   }
 
-  // Check Auth Status (equivalent to Firebase authStateChanges on load)
-  Future<User?> checkAuthStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
+  SupabaseClient get _client => Supabase.instance.client;
 
-    if (token == null) {
+  Future<app_model.User?> init() async {
+    return await checkAuthStatus();
+  }
+
+  Future<app_model.User?> checkAuthStatus() async {
+    final session = _client.auth.currentSession;
+    final supabaseUser = session?.user;
+    if (supabaseUser == null) {
       _currentUser = null;
       return null;
     }
 
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/me'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _currentUser = User.fromJson(data['user']);
-        return _currentUser;
-      } else {
-        await signOut();
-        return null;
-      }
-    } catch (e) {
-      debugPrint("Check Auth Error: $e");
-      return null;
-    }
+    _currentUser = app_model.User(
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? '',
+    );
+    return _currentUser;
   }
 
-  // Sign In
-  Future<User?> signIn(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 15));
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        final token = data['token'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, token);
-        
-        _currentUser = User.fromJson(data['user']);
-        return _currentUser;
-      } else {
-        throw Exception(data['message'] ?? 'Failed to sign in');
+  Future<StreamSubscription<AuthState>> onAuthStateChange(
+    void Function(AuthChangeEvent event, Session? session) callback,
+  ) async {
+    return _client.auth.onAuthStateChange.listen((authState) {
+      final event = authState.event;
+      final session = authState.session;
+      final supabaseUser = session?.user;
+      if (event == AuthChangeEvent.signedIn && supabaseUser != null) {
+        _currentUser = app_model.User(
+          id: supabaseUser.id,
+          email: supabaseUser.email ?? '',
+        );
+      } else if (event == AuthChangeEvent.signedOut) {
+        _currentUser = null;
       }
-    } catch (e) {
-      debugPrint("Sign In Error: $e");
-      rethrow;
-    }
+      callback(event, session);
+    });
   }
 
-  // Sign Up
-  Future<User?> signUp(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 15));
+  Future<app_model.User?> signIn(String email, String password) async {
+    final response = await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
 
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 201) {
-        final token = data['token'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_tokenKey, token);
-        
-        _currentUser = User.fromJson(data['user']);
-        return _currentUser;
-      } else {
-        throw Exception(data['message'] ?? 'Failed to sign up');
-      }
-    } catch (e) {
-      debugPrint("Sign Up Error: $e");
-      rethrow;
+    final supabaseUser = response.user ?? response.session?.user;
+    if (supabaseUser == null) {
+      throw Exception('Login failed. Please try again.');
     }
+
+    _currentUser = app_model.User(
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? '',
+    );
+
+    // Sync profile on login to ensure public.users is populated
+    try {
+      await _client.from('users').upsert({
+        'id': _currentUser!.id,
+        'email': _currentUser!.email,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('SUPABASE ERROR (signIn sync): $e');
+    }
+
+    return _currentUser;
   }
 
-  // Sign Out
+  Future<app_model.User?> signUp(String email, String password) async {
+    final response = await _client.auth.signUp(
+      email: email,
+      password: password,
+    );
+
+    final supabaseUser = response.user ?? response.session?.user;
+    if (supabaseUser == null) {
+      throw Exception('Signup failed. Please check your email and password.');
+    }
+
+    _currentUser = app_model.User(
+      id: supabaseUser.id,
+      email: supabaseUser.email ?? '',
+    );
+
+    try {
+      // Use upsert instead of insert to avoid errors if the user profile already exists
+      await _client.from('users').upsert({
+        'id': _currentUser!.id,
+        'email': _currentUser!.email,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('Profile sync error: $e');
+      // Ignore secondary sync errors so auth still works.
+    }
+
+    return _currentUser;
+  }
+
   Future<void> signOut() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      _currentUser = null;
-    } catch (e) {
-      debugPrint("Sign Out Error: $e");
-    }
+    await _client.auth.signOut();
+    _currentUser = null;
   }
 }
