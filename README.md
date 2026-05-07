@@ -62,6 +62,9 @@ step 3(initialise flutter in firebase):
          
            runApp(const MyApp());
          }
+   step 4:the implementation(so that user can see!):
+      this depends on the specific hackathon because this is basically UI integration to the backend logic,the backend logic implementaion has been discussed in above steps
+      
       
       
       
