@@ -30,6 +30,7 @@ after shut down we can get to the current state by <img width="1920" height="102
 
 process for implementing login(in case of independent mobile app(no reliance on laptop):
 step 1:go to firebase,login and set up authentication(gmail only to save time)
+step 1.5:set up firestore database(or whichever is suitable to your project)
 step 2:settings->general->your apps->android:
    step 1(register app):
       fill package name(applicationID in android/app/build.gradle.kts)
