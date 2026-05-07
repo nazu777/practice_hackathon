@@ -41,7 +41,8 @@ step 2:settings->general->your apps->android:
       open pubspec.yaml and add these dependencies:
          firebase_core: ^3.13.0
          firebase_auth: ^5.5.0
-         cloud_firestore: ^5.4.3
+         cloud_firestore: ^5.4.3(enable google API or else this will throw error:
+                           https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=pulseedge-98498  )
       flutter pub get
    step 3(making google services available to firebase SDKs):
       adding this to project level build.gradle.kts: id("com.google.gms.google-services") version "4.4.4" apply false 
