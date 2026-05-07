@@ -28,7 +28,26 @@ after shut down we can get to the current state by <img width="1920" height="102
 7. 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 -> token of nazu777. it will expire in 30 days -> https://github.com/settings/tokens -> this will be used during git push.
 
 
-
+process for implementing login(in case of independent mobile app(no reliance on laptop):
+step 1:go to firebase,login and set up authentication(gmail only to save time)
+step 2:settings->general->your apps->android:
+   step 1(register app):
+      fill package name(applicationID in android/app/build.gradle.kts)
+      nickname up to you 
+      then register app
+   step 2(download and then add config file):
+      download the json file and move it into mobile_app/android/app/  (beside src and build.gradle.kts)
+   step 2.5(configure your project to be able to have firebase sdk):
+      open pubspec.yaml and add these dependencies:
+         firebase_core: ^3.13.0
+         firebase_auth: ^5.5.0
+      flutter pub get
+   step 3(making google services available to firebase SDKs):
+      adding this to project level build.gradle.kts: id("com.google.gms.google-services") version "4.4.4" apply false 
+      add this to app level build.gradle.kts: id("com.google.gms.google-services")
+      
+      
+      
 
 PROMPT FOR OUR 12 HOUR HACKATHON PROJECT
 
