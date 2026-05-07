@@ -45,6 +45,23 @@ step 2:settings->general->your apps->android:
    step 3(making google services available to firebase SDKs):
       adding this to project level build.gradle.kts: id("com.google.gms.google-services") version "4.4.4" apply false 
       add this to app level build.gradle.kts: id("com.google.gms.google-services")
+   step 4:
+      continue to console
+step 3(initialise flutter in firebase):
+   go to main.dart and do the following changes:
+      import 'package:firebase_core/firebase_core.dart';
+      
+      Then modify your main() function
+      
+      Change it to:
+      
+         void main() async {
+           WidgetsFlutterBinding.ensureInitialized();
+         
+           await Firebase.initializeApp();
+         
+           runApp(const MyApp());
+         }
       
       
       
