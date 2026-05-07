@@ -76,6 +76,7 @@ NEED FOR VIRTUAL ENVIRONMENT(TO RUN TENSORFLOW):
 
 CONVERTING APP TO APK:
    flutter build apk --release
+   
    then share this file to whatsapp: 
       practice_hackathon\v2\mobile_app\build\app\outputs\flutter-apk\app-release.apk
 
