@@ -51,6 +51,13 @@ final activityProvider = Provider<String>((ref) {
   return data?['activity'] as String? ?? ACTIVITY_SITTING;
 });
 
+// The 10-second stabilized average intensity (used in strain formula)
+// This is what gets multiplied with risk — NOT the live raw feed.
+final stabilizedIntensityProvider = Provider<double>((ref) {
+  final data = ref.watch(_stabilizedStreamProvider).value;
+  return (data?['average'] as double?) ?? 0.0;
+});
+
 // Computed: The final strain product value (risk × stabilized intensity)
 final strainProductProvider = Provider<double>((ref) {
   final risk = ref.watch(riskProvider);
