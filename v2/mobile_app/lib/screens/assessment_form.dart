@@ -134,7 +134,22 @@ class _AssessmentFormScreenState extends ConsumerState<AssessmentFormScreen> {
                           const DropdownMenuItem(value: 0.0, child: Text('No')),
                           const DropdownMenuItem(value: 1.0, child: Text('Yes')),
                         ], (v) => setState(() => _fastingBS = v!)),
+                        
+                        // ADDED: Resting ECG Field (Parameter 7)
+                        _styledDropdown("Resting ECG", _restingECG, [
+                          const DropdownMenuItem(value: 0.0, child: Text('Normal')),
+                          const DropdownMenuItem(value: 1.0, child: Text('ST-T Wave Abnormality')),
+                          const DropdownMenuItem(value: 2.0, child: Text('LVH')),
+                        ], (v) => setState(() => _restingECG = v!)),
+
                         _styledField("Max Heart Rate", _maxHRCtrl, "bpm"),
+
+                        // ADDED: Exercise Induced Angina Field (Parameter 9)
+                        _styledDropdown("Exercise Induced Angina", _exerciseAngina, [
+                          const DropdownMenuItem(value: 0.0, child: Text('No')),
+                          const DropdownMenuItem(value: 1.0, child: Text('Yes')),
+                        ], (v) => setState(() => _exerciseAngina = v!)),
+
                         _styledField("ST Depression (Oldpeak)", _oldpeakCtrl, "e.g. 1.5"),
                         _styledDropdown("ST Slope", _stSlope, [
                           const DropdownMenuItem(value: 0.0, child: Text('Up')),
