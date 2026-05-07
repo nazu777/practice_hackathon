@@ -74,6 +74,11 @@ NEED FOR VIRTUAL ENVIRONMENT(TO RUN TENSORFLOW):
    .\venv\Scripts\activate
    pip install -r requirements.txt
 
+CONVERTING APP TO APK:
+   flutter build apk --release
+   then share this file to whatsapp: 
+      practice_hackathon\v2\mobile_app\build\app\outputs\flutter-apk\app-release.apk
+
 PROMPT FOR OUR 12 HOUR HACKATHON PROJECT
 
 so we are thinking of building a project in which we basically tell the user to do/avoid certain actions based on his current actions(to avoid cardiac arrest and such heart related calamities)
