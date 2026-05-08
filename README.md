@@ -15,6 +15,8 @@ step 1:rm -rf v2/mobile_app/.git
 step 2:git add and commit
 
 
+note:for 2nd time cloning use git pull
+
 process for merging the codes in two branches
 1. pull the main branch git clone -> git clone https://github.com/nazu777/practice_hackathon.git -> git fetch origin (might need)
 2. go inside the folder of main branch -> cd practice_hackathon
