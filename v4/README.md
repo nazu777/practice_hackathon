@@ -15,7 +15,11 @@ step 2:git add and commit
 
 
 process for merging the codes in two branches
-1. pull the main branch git clone -> git clone https://github.com/nazu777/practice_hackathon.git -> git fetch origin (might need)
+1. pull the main branch git clone -> git clone https://github.com/nazu777/practice_hackathon.git -> git fetch origin (might need) THIS IS FOR THE FIRST TIME
+   IF U R IN THE MIDDLE OF THE PROJECT AND U WANT TO PUSH SOMETHING SO FIRST GO TO THE DIRECTORY WHERE U HAD DONE git clone THEN run git pull -> this is to sync the github and ur local repo
+   1.1 git branch <branch_name> (to create a branch)
+   1.2 git checkout <branch_name> 
+   1.3 git add . -> git commit -m "pineapple pizza is better" -> (git push IF DOING FROM SECOND TIME, ELSE git push -u origin <branch_name>)
 2. go inside the folder of main branch -> cd practice_hackathon
 3. then pull the child branch -> git checkout shreyansh_ui_updated_folder_name_match
 4. now merge with main -> git merge origin/main (might show errors)
