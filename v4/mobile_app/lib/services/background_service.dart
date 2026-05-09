@@ -79,6 +79,9 @@ void onStart(ServiceInstance service) async {
 
   final List<double> svmBuffer = [];
   DateTime lastUIUpdate = DateTime.now();
+  // Keep a short rolling buffer (last ~1 second of readings) for
+  // a slightly smoothed instant label — avoids flickering on single spikes.
+  final List<double> instantBuffer = [];
   
   // 1. Listen to raw accelerometer events continuously
   accelerometerEvents.listen((AccelerometerEvent event) {
@@ -88,10 +91,20 @@ void onStart(ServiceInstance service) async {
     
     svmBuffer.add(normalized);
 
+    // Rolling 1-second smoothing buffer for instant label (~50 samples at 50 Hz)
+    instantBuffer.add(normalized);
+    if (instantBuffer.length > 50) instantBuffer.removeAt(0);
+
     // THROTTLE: Send raw spikes to UI 5 times per second for the live chart
+    // Also send an instantly-classified activity label each tick.
     final now = DateTime.now();
     if (now.difference(lastUIUpdate).inMilliseconds > 200) {
-      service.invoke('updateIntensity', {"intensity": normalized});
+      final double instantAvg = SensorMath.computeAverage(instantBuffer);
+      final String instantActivity = SensorMath.classifyActivity(instantAvg);
+      service.invoke('updateIntensity', {
+        'intensity': normalized,
+        'activity': instantActivity,
+      });
       lastUIUpdate = now;
     }
   });

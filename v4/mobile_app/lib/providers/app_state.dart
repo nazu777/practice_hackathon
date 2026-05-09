@@ -73,10 +73,15 @@ final exertionProvider = NotifierProvider<ExertionNotifier, int>(ExertionNotifie
 // BACKGROUND SERVICE STREAMS
 // ================================================================
 
-final _liveStreamProvider = StreamProvider<double>((ref) {
+// Carries both live intensity AND an instantly-classified activity label
+// updated every 200 ms — no more 10-second wait for the label.
+final _liveStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
   return FlutterBackgroundService()
       .on('updateIntensity')
-      .map((event) => (event?['intensity'] as num?)?.toDouble() ?? 0.0);
+      .map((event) => {
+            'intensity': (event?['intensity'] as num?)?.toDouble() ?? 0.0,
+            'activity': event?['activity'] as String? ?? ACTIVITY_SITTING,
+          });
 });
 
 final _stabilizedStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
@@ -93,11 +98,13 @@ final _stabilizedStreamProvider = StreamProvider<Map<String, dynamic>>((ref) {
 // ================================================================
 
 final intensityProvider = Provider<double>((ref) {
-  return ref.watch(_liveStreamProvider).value ?? 0.0;
+  final data = ref.watch(_liveStreamProvider).value;
+  return data?['intensity'] as double? ?? 0.0;
 });
 
+// ✅ NOW INSTANT: reads from the 200ms live stream, not the 10-second window
 final activityProvider = Provider<String>((ref) {
-  final data = ref.watch(_stabilizedStreamProvider).value;
+  final data = ref.watch(_liveStreamProvider).value;
   return data?['activity'] as String? ?? ACTIVITY_SITTING;
 });
 
